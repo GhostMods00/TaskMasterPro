@@ -1,7 +1,7 @@
 // src/components/shared/Sidebar.tsx
 import React from 'react';
-import { Drawer, List, ListItem, ListItemIcon, ListItemText } from '@mui/material';
-import { Dashboard, Assignment, People } from '@mui/icons-material';
+import { Drawer, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
+import { Dashboard, Assignment } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const Sidebar = () => {
@@ -21,18 +21,18 @@ const Sidebar = () => {
       }}
     >
       <List>
-        <ListItem button onClick={() => navigate('/dashboard')}>
+        <ListItemButton onClick={() => navigate('/dashboard')}>
           <ListItemIcon>
             <Dashboard />
           </ListItemIcon>
           <ListItemText primary="Dashboard" />
-        </ListItem>
-        <ListItem button onClick={() => navigate('/projects')}>
+        </ListItemButton>
+        <ListItemButton onClick={() => navigate('/projects')}>
           <ListItemIcon>
             <Assignment />
           </ListItemIcon>
           <ListItemText primary="Projects" />
-        </ListItem>
+        </ListItemButton>
       </List>
     </Drawer>
   );
