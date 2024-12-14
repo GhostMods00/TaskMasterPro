@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 // Layouts
-import DashboardLayout from '../components/shared/Layout/DashboardLayout';
+import DashboardLayout from '../components/shared/Layout/DashLayout';
 import AuthLayout from '../components/shared/Layout/AuthLayout';
 
 // Import pages with lazy loading
@@ -17,15 +17,25 @@ const Register = React.lazy(() => import('../pages/auth/Register'));
 const NotFound = React.lazy(() => import('../pages/NotFound'));
 
 // Loading component
-const LoadingScreen = () => (
+const LoadingScreen: React.FC = () => (
   <div className="flex items-center justify-center min-h-screen">
-    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+    <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
 // Protected Route wrapper
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const auth = useAuth(); // Get auth context
+
+  if (auth === null) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const { isAuthenticated, isLoading } = auth;
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -39,8 +49,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 // Public Route wrapper (accessible only when not authenticated)
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth();
+interface PublicRouteProps {
+  children: React.ReactNode;
+}
+
+const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
+  const auth = useAuth(); // Get auth context
+
+  if (auth === null) {
+    return <>{children}</>;
+  }
+
+  const { isAuthenticated, isLoading } = auth;
 
   if (isLoading) {
     return <LoadingScreen />;
@@ -53,7 +73,7 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-const AppRoutes = () => {
+const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
@@ -85,6 +105,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
+          <Route index element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           
           {/* Projects Routes */}

@@ -1,16 +1,15 @@
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from "jwt-decode";
-import authService from '../services/auth.service';
 
-export interface User {
+interface User {
   id: number;
   email: string;
   username: string;
   role: string;
 }
 
-export interface AuthContextType {
+interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
@@ -19,10 +18,17 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   register: (username: string, email: string, password: string) => Promise<void>;
-  clearError: () => void;
 }
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +44,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const decoded = jwtDecode<User>(storedToken);
           setUser(decoded);
-          setToken(storedToken);
         } catch (error) {
           console.error('Token validation error:', error);
           localStorage.removeItem('token');
@@ -56,18 +61,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setIsLoading(true);
-      const response = await authService.login({ email, password });
-      const { token } = response;
+      // Replace with your actual API call
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
       
-      localStorage.setItem('token', token);
-      const decoded = jwtDecode<User>(token);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      localStorage.setItem('token', data.token);
+      const decoded = jwtDecode<User>(data.token);
       setUser(decoded);
-      setToken(token);
+      setToken(data.token);
       navigate('/dashboard');
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'An error occurred during login';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      setError(err.message || 'An error occurred during login');
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -77,12 +91,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setIsLoading(true);
-      await authService.register({ username, email, password });
+      // Replace with your actual API call
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
       navigate('/login');
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'An error occurred during registration';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+      setError(err.message || 'An error occurred during registration');
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -95,10 +120,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     navigate('/login');
   };
 
-  const clearError = () => {
-    setError(null);
-  };
-
   const value = {
     user,
     token,
@@ -107,9 +128,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     error,
     login,
     logout,
-    register,
-    clearError
+    register
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
+
+export { AuthContext };
