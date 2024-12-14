@@ -12,7 +12,11 @@ interface LoginFormData {
 }
 
 export const LoginForm = () => {
-  const { login, error, isLoading } = useAuth();
+  const auth = useAuth();
+  if (!auth) {
+    return <div>Error: Auth context is not available</div>;
+  }
+  const { login, error, isLoading } = auth;
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
 
   const onSubmit = async (data: LoginFormData) => {
