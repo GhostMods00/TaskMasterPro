@@ -14,7 +14,10 @@ interface RegisterFormData {
 }
 
 export const RegisterForm = () => {
-  const { register: registerUser, error, isLoading } = useAuth();
+  const auth = useAuth();
+  const registerUser = auth?.register;
+  const error = auth?.error;
+  const isLoading = auth?.isLoading;
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>();
   const password = watch('password');
 
@@ -24,7 +27,9 @@ export const RegisterForm = () => {
     }
 
     try {
-      await registerUser(data.username, data.email, data.password);
+      if (registerUser) {
+        await registerUser(data.username, data.email, data.password);
+      }
     } catch (err) {
       console.error('Registration failed:', err);
     }

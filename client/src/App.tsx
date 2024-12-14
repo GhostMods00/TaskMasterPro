@@ -2,21 +2,18 @@ import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
-import { ToastProvider } from './context/ToastContext';
-import AppRoutes from './routes'; // You'll need to create this
+import AppRoutes from './routes';
 
-function App() {
+const App = () => {
   return (
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <ToastProvider>
-            <AppRoutes />
-          </ToastProvider>
+          <AppRoutes />
         </AuthProvider>
       </ThemeProvider>
     </Router>
   );
-}
+};
 
 export default App;

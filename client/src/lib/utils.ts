@@ -1,5 +1,6 @@
+// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx";
-import twMerge from "tailwind-merge";
+const twMerge = require("tailwind-merge");  // Using require instead of import
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
