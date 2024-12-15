@@ -1,4 +1,4 @@
-import { User } from './user.models';
+import { User } from './user.model';
 import { Project } from './project.model';
 import { Task } from './task.model';
 
