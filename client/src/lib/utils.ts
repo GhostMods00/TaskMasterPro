@@ -1,9 +1,8 @@
-// src/lib/utils.ts
 import { type ClassValue, clsx } from "clsx";
-const twMerge = require("tailwind-merge");  // Using require instead of import
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  const merged = clsx(inputs);
+  return merged.split(' ').filter(Boolean).join(' ');
 }
 
 export const formatDate = (date: Date | string) => {
