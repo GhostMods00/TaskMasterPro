@@ -1,6 +1,6 @@
 import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../config/database';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 
 export interface UserAttributes {
   id: number;
@@ -24,6 +24,11 @@ export class User extends Model<UserAttributes> implements UserAttributes {
   public role!: 'user' | 'admin';
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
+
+  // Instance method to check password
+  public async comparePassword(candidatePassword: string): Promise<boolean> {
+    return bcrypt.compare(candidatePassword, this.password);
+  }
 }
 
 User.init(
@@ -71,8 +76,17 @@ User.init(
     modelName: 'User',
     hooks: {
       beforeCreate: async (user: User) => {
-        user.password = await bcrypt.hash(user.password, 10);
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      },
+      beforeUpdate: async (user: User) => {
+        if (user.changed('password')) {
+          const salt = await bcrypt.genSalt(10);
+          user.password = await bcrypt.hash(user.password, salt);
+        }
       },
     },
   }
 );
+
+export default User;
