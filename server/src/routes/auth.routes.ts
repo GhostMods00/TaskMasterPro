@@ -1,25 +1,24 @@
-// server/src/routes/auth.routes.ts
-import express from 'express';
-import { login } from '../controllers/auth.controller';
+import express, { Router } from 'express';
+import { body } from 'express-validator';
+import { register, login } from '../controllers/auth.controller';
+import { validate } from '../middleware/validate.middleware';
 
-const router = express.Router();
+const router: Router = express.Router();
 
-router.post('/login', login);
+const registerValidation = [
+  body('username').trim().isLength({ min: 3, max: 30 }),
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }),
+  body('firstName').trim().optional(),
+  body('lastName').trim().optional()
+];
 
-// Add debug route
-router.get('/check-user/:email', async (req, res) => {
-  try {
-    const [user] = await sequelize.query(
-      'SELECT email, username, role FROM users WHERE email = :email',
-      {
-        replacements: { email: req.params.email },
-        type: sequelize.QueryTypes.SELECT
-      }
-    );
-    res.json({ exists: !!user, user });
-  } catch (error) {
-    res.status(500).json({ error: 'Error checking user' });
-  }
-});
+const loginValidation = [
+  body('email').isEmail().normalizeEmail(),
+  body('password').exists()
+];
+
+router.post('/register', validate(registerValidation), register as express.RequestHandler);
+router.post('/login', validate(loginValidation), login as express.RequestHandler);
 
 export default router;
