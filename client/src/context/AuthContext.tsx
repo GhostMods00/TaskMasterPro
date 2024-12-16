@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from "jwt-decode";
+import api, { ApiError } from '../services/api'; // Import your API service
 
 interface User {
   id: number;
@@ -61,26 +62,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setIsLoading(true);
-      // Replace with your actual API call
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
       
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
+      const response = await api.post('/auth/login', { email, password });
+      const data = response.data;
 
       localStorage.setItem('token', data.token);
       const decoded = jwtDecode<User>(data.token);
       setUser(decoded);
       setToken(data.token);
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+    } catch (err) {
+      const errorMessage = err instanceof ApiError 
+        ? err.message 
+        : 'An error occurred during login';
+      setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
@@ -91,22 +86,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setError(null);
       setIsLoading(true);
-      // Replace with your actual API call
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
-      });
-
-      const data = await response.json();
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
+      await api.post('/auth/register', { username, email, password });
       navigate('/login');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during registration');
+    } catch (err) {
+      const errorMessage = err instanceof ApiError 
+        ? err.message 
+        : 'An error occurred during registration';
+      setError(errorMessage);
       throw err;
     } finally {
       setIsLoading(false);
