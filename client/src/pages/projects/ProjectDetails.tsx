@@ -171,7 +171,7 @@ const ProjectDetails = () => {
           </DropdownMenu>
         </div>
         </div>
-        // src/pages/projects/ProjectDetails.tsx (continued)
+       
 
       <div className="grid grid-cols-3 gap-6">
         <Card>
