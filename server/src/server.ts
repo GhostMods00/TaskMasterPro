@@ -1,6 +1,8 @@
+import express from 'express';
 import app from './app';
 import { sequelize } from './config/database';
 import { CONFIG } from './config/config';
+app.use(express.static('../client/dist'));
 
 async function startServer() {
   try {
