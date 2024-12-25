@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -16,11 +17,16 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(helmet());
+// Configure Helmet for security while allowing React app to work
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled because React needs to load various resources
+  crossOriginEmbedderPolicy: false
+}));
+
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -33,7 +39,18 @@ app.get('/health', (req: Request, res: Response) => {
   });
 });
 
-// Error handling
+// Serve static files in production
+if (CONFIG.NODE_ENV === 'production') {
+  // Serve static files
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+  });
+}
+
+// Error handling (should be last)
 app.use(errorHandler);
 
 export default app;
