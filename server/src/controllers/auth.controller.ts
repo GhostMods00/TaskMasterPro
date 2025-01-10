@@ -1,57 +1,170 @@
-// server/src/controllers/auth.controller.ts
+// src/controllers/auth.controller.ts
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { sequelize } from '../config/db.config';
+import { QueryTypes } from 'sequelize';
+import { sequelize } from '../config/database';
 
-export const login = async (req: Request, res: Response) => {
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+  password: string;
+}
+
+interface NewUser {
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+}
+
+// Utility function to validate required fields
+const validateFields = (fields: Record<string, any>, required: string[]): string | null => {
+  for (const field of required) {
+    if (!fields[field]) return `Field ${field} is required.`;
+  }
+  return null;
+};
+
+export const login = async (req: Request, res: Response): Promise<Response> => {
   try {
-    console.log('Login attempt with:', req.body); // Debug log
     const { email, password } = req.body;
 
-    // Find user by email using raw SQL to debug
-    const [users] = await sequelize.query(
-      'SELECT * FROM users WHERE email = :email',
+    // Validate required fields
+    const error = validateFields(req.body, ['email', 'password']);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const [user] = await sequelize.query<User>(
+      `
+      SELECT id, username, email, password, role 
+      FROM users 
+      WHERE email = :email
+    `,
       {
         replacements: { email },
-        type: sequelize.QueryTypes.SELECT
+        type: QueryTypes.SELECT,
       }
     );
-    
-    console.log('Found user:', users); // Debug log
 
-    if (!users) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (!user) {
+      console.warn(`Login failed: User not found for email ${email}`);
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Since we stored password as already hashed in seeds.sql
-    // and we know test password is 'password123'
-    const testHash = '$2a$10$xVQZyx5Rza2Jk8CWgIoTF.kThBp9h4UqFgvKSv3NBxHRyEP9bhiV2';
-    // Compare with stored hash
-    const isValidPassword = await bcrypt.compare(password, testHash);
-
+    const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      console.warn(`Login failed: Invalid password for email ${email}`);
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Generate token
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
     const token = jwt.sign(
-      { id: users.id, email: users.email, role: users.role },
-      process.env.JWT_SECRET || 'your_jwt_secret',
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.json({
+    console.log('Login successful for email:', email);
+
+    return res.json({
       token,
       user: {
-        id: users.id,
-        email: users.email,
-        username: users.username,
-        role: users.role
-      }
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error during login' });
+    return res.status(500).json({ message: 'Server error during login' });
+  }
+};
+
+export const register = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { username, email, password } = req.body;
+
+    // Validate required fields
+    const error = validateFields(req.body, ['username', 'email', 'password']);
+    if (error) {
+      return res.status(400).json({ message: error });
+    }
+
+    const [existingUser] = await sequelize.query(
+      `
+      SELECT * FROM users WHERE email = :email OR username = :username
+    `,
+      {
+        replacements: { email, username },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (existingUser) {
+      console.warn(`Registration failed: User already exists for email ${email} or username ${username}`);
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const [newUser] = await sequelize.query<NewUser>(
+      `
+      INSERT INTO users (username, email, password, role, created_at, updated_at)
+      VALUES (:username, :email, :password, 'user', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING id, username, email, role;
+    `,
+      {
+        replacements: {
+          username,
+          email,
+          password: hashedPassword,
+        },
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    if (!newUser) {
+      throw new Error('Failed to create user');
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not configured');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
+    const token = jwt.sign(
+      { id: newUser.id, email, role: 'user' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log(`User registered successfully: ${username} (${email})`);
+
+    return res.status(201).json({
+      token,
+      user: {
+        id: newUser.id,
+        username,
+        email,
+        role: 'user',
+      },
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    return res.status(500).json({ message: 'Server error during registration' });
   }
 };

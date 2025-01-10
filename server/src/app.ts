@@ -1,27 +1,46 @@
 // server/src/app.ts
-import express, { Express, Request, Response } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
+import express from 'express';
+import { securityMiddleware } from './middleware/security.middleware';
+import { errorHandler } from './middleware/error.middleware';
+import { requestLogger } from './services/logging.service';
+import { logger } from './services/logging.service';
+import config from './config/env.config';
 
-dotenv.config();
+const app = express();
 
-const app: Express = express();
+// Security middleware
+app.use(securityMiddleware.helmet);
+app.use(securityMiddleware.cors);
+app.use('/api/', securityMiddleware.rateLimiter);
+app.use(securityMiddleware.sanitizeRequest);
 
-// Middleware
-app.use(cors());
-app.use(helmet());
-app.use(morgan('dev'));
-app.use(express.json());
+// Logging middleware
+app.use(requestLogger);
 
-// Basic route for testing
-app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'TaskMaster Pro API' });
-});
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-app.get('/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK' });
-});
+// Routes
+app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/projects', require('./routes/project.routes'));
+app.use('/api/tasks', require('./routes/task.routes'));
+app.use('/api/integrations', require('./routes/integration.routes'));
 
-export default app;
+// Error handling
+app.use(errorHandler);
+
+// Start server
+const startServer = async () => {
+  try {
+    const { port } = config.server;
+    app.listen(port, () => {
+      logger.info(`Server running on port ${port} in ${config.server.nodeEnv} mode`);
+    });
+  } catch (error) {
+    logger.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+export { app, startServer };

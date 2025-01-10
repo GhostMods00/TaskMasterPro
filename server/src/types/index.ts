@@ -1,18 +1,24 @@
-export interface User {
-  id: number;
-  username: string;
-  email: string;
-  password: string;
-  role: string;
-}
-
+// src/types/index.ts
 export interface Project {
   id: number;
   title: string;
-  description: string;
-  status: string;
-  owner_id: number;
+  description?: string;
+  status: 'planning' | 'active' | 'completed' | 'on-hold';
+  startDate?: Date;
+  dueDate?: Date;
+  ownerId: number;
+  progress?: number;
 }
+
+export interface CreateProjectDto {
+  title: string;
+  description?: string;
+  status: 'planning' | 'active' | 'completed' | 'on-hold';
+  startDate?: Date;
+  dueDate?: Date;
+}
+
+export interface UpdateProjectDto extends Partial<CreateProjectDto> {}
 
 export interface Task {
   id: number;
@@ -20,6 +26,21 @@ export interface Task {
   description: string;
   status: string;
   priority: string;
-  project_id: number;
-  assignee_id: number;
+  assignee: {
+    id: number;
+    username: string;
+  };
+}
+
+export interface DragResult {
+  draggableId: string;
+  type: string;
+  source: {
+    droppableId: string;
+    index: number;
+  };
+  destination?: {
+    droppableId: string;
+    index: number;
+  };
 }
